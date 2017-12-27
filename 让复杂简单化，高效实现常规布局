@@ -1,0 +1,550 @@
+## 常规页面布局（适配PC和移动端）
+
+我们用极少的代码，来实现通用于PC端和移动端的页面布局，计划的效果如下：
+
+- PC端：
+
+![](http://www.imaoda.com/s/img/github/1.jpg)
+
+- 移动端：
+
+![](http://www.imaoda.com/s/img/github/2.jpg)
+
+这种布局能广泛引用于多种场景，样式如下：
+
+```html
+<body>
+<header> <span class='nav-toggle'>三</span> <div class='content'>logo</div>  </header>
+<nav> 左侧导航栏 </nav>
+<article> <div class='content'>正文</div> </article>
+<footer> <div class='content'>copyright</div> </footer>
+</body>
+<style>
+header, article, footer{
+    display: flex;
+    justify-content: center
+}
+.content{
+    width: 100%;
+    max-width: 60rem;
+}
+header{
+    height: 3rem;
+    line-height: 3rem;
+}
+footer{
+    background:gray;
+    height:6rem
+}
+nav{
+    width: 15rem;
+    position: fixed;
+    left: calc(50vw - 45rem);
+    transition: left .3s;
+}
+.nav-toggle{ 
+    display:none
+}
+@media(max-width:768px){
+    .nav-toggle{
+        display:inline
+    }
+}
+</style>
+<script>
+document.querySelector('.nav-toggle').onclick = function(){
+	let style = document.querySelector('nav').style
+	style.left = style.left === '0px'? '' : '0px'
+}
+</script>
+```
+上一个效果图：（仅实现梗概样式，局部细节可根据实际情况优化）
+
+![](http://www.imaoda.com/s/img/github/6.gif)
+
+## 顶部导航，hover 展开子菜单
+
+![](http://www.imaoda.com/s/img/github/8.gif)
+
+核心思想：
+
+- hover 修改子元素样式
+- position: absolute 操控子元素位置
+ 
+纯 CSS，代码极其精简
+
+```html
+<ul class='main'>
+	<li>精彩 
+		<ul class='sub'>
+			<li>活动</li>
+			<li>优惠</li>
+			<li>报名</li>
+		</ul>
+	</li>
+	<li>我的
+		<ul class='sub'>
+			<li>服务</li>
+			<li>查询</li>
+			<li>投诉</li>
+		</ul>							
+	</li>
+</ul>
+<style>
+.main > li{
+    display: inline-block;
+    position: relative;
+}
+.main > li:hover .sub{
+    display: block;
+}
+.sub{
+    display: none;
+    position: absolute; 
+    top: 1rem;
+}
+</style>
+```
+
+如果是侧边导航栏，hover右侧弹出子菜单，则只需略微调整 css 即可
+
+![](http://www.imaoda.com/s/img/github/9.gif)
+
+```html
+<style>
+.main {
+    position: relative;
+}
+.main > li:hover .sub{
+    display: block;
+}
+.sub{
+    display: none;
+    position: absolute; 
+    top: 0;
+    left: 2rem
+}
+</style>
+```
+
+## 左侧导航，展开子菜单（带过渡效果）
+
+![](http://www.imaoda.com/s/img/github/10.gif)
+
+要想实现上面的效果，初步的设想是，对子菜单的 height 属性设置 transition 动画： `height:0 -> height:auto`，但是实际发现这样行不通。
+
+更改策略，利用双层技术，外层先瞬间展开 `height:0 -> height:auto`，内容慢慢滑出 `translateY(-100%) -> translateY(0%) `，像是放下投影幕布，代码如下：
+
+```html
+<ul class='main'>
+	<li> 电器
+		<ul class='sub'>
+			<li>冰箱</li>
+			<li>洗衣机</li>
+			<li>电饭煲</li>
+		</ul>
+	</li>
+	<li> 服饰
+		<ul class='sub'>
+			<li>男装</li>
+			<li>女装</li>
+			<li>童装</li>
+		</ul>							
+	</li>
+	<li> 办公
+		<ul class='sub'>
+			<li>打印机</li>
+			<li>电脑</li>
+			<li>办公椅</li>
+		</ul>							
+	</li>					
+</ul>
+<style>
+.sub {
+	height: 0px; 
+	overflow: hidden;
+	width: 4rem;
+	margin-left: 1rem
+}
+.sub li{
+	transform: translateY(-100%);
+	transition: all 1s
+}
+.main li:hover .sub{
+	height: auto
+}
+.main li:hover .sub li{
+	transform: translateY(0%);
+}
+</style>
+```
+
+另一个方案，动画效果略有差异，像是脱掉外套。实践告诉我们 height 属性的动画行不通，但是用 max-heigth 却可以。因此代码更加精简，我们简单修改 style 如下：
+
+![](http://www.imaoda.com/s/img/github/11.gif)
+
+```html
+<style>
+.sub {
+	max-height: 0px; 
+	overflow: hidden;
+	transition: all .6s;
+	margin-left: 1rem
+}
+.main li:hover .sub{
+	max-height: 10rem
+}
+</style>
+```
+
+> 此方案的缺点是需要预设子菜单的最大高度，如 max-heigth:10rem，我们需要尽可能大一些。但实际情况可能更灵活
+
+## 顶部导航下划线
+
+![](http://www.imaoda.com/s/img/github/12.gif)
+
+直接在导航条下方创建一个“压扁的像一条线的block元素”，并设置成 position: relative，通过 js 控制其左右移动，代码如下：
+
+```html
+<ul class='nav'>
+	<li> 电器 </li>
+	<li> 服饰 </li>
+	<li> 办公 </li>
+	<li> 亲子 </li>
+	<li> 团购 </li>					
+</ul>
+<div class='underline' style='left: 0%'></div>
+<script>
+let items = document.querySelector('.nav').children
+for (let i = 0; i < items.length; i ++) { // 注意:此处不能用 var i
+	items[i].onclick = function(){
+		document.querySelector('.underline').style.left = i * 20 + '%'
+	}
+}
+</script>
+<style>
+.nav{
+	display: flex;
+}
+.nav li{
+	flex: 0 0 20%;
+	text-align: center;
+}
+.underline{
+	width: 20%;
+	height:.2rem;
+	background: red;
+	position: relative;
+	transition: all .3s
+}
+</style>
+```
+
+## 图标导航（移动端）
+
+![](http://www.imaoda.com/s/img/github/4.jpg)
+
+一行5个元素，采用双层包装的方式，内包装固定20%（用flex-basis来控制20% 效果更好）
+
+```html
+<div class='nav'>
+    <div class='nav-item'> <img> <span> 旅行 </span> </div> 
+    <div class='nav-item'> <img> <span> 惠生活 </span> </div> 
+    <div class='nav-item'> <img> <span> 购物 </span> </div> 
+    <div class='nav-item'> <img> <span> 时尚 </span> </div> 
+    <div class='nav-item'> <img> <span> 教育 </span> </div>
+    <div class='nav-item'> <img> <span> 数码控 </span> </div>
+    <div class='nav-item'> <img> <span> 热点 </span> </div>
+    <div class='nav-item'> <img> <span> 外卖 </span> </div>
+    <div class='nav-item'> <img> <span> 会员 </span> </div>
+    <div class='nav-item'> <img> <span> 设置 </span> </div>
+</div>
+<style>
+.nav {
+    display: flex;
+    flex-flow: row wrap;
+}
+.nav-item {
+    flex:0 0 20%;
+    display: flex;
+	flex-flow: column wrap;
+	align-items: center;
+}
+.nav-item img{
+	height:3rem; width:3rem;border-radius:40%
+}
+</style>
+```
+![](http://www.imaoda.com/s/img/github/3.jpg)
+
+本方案中没有采用 justify-content: space-around 来确定间距，而是采用双层包装：外层 20% 的 flex-basis 均等划分，内层width: auto 自动充满。如需padding/margin/border 在内层上添加，不影响布局
+
+> 直接用 width: 20% ，有时候度量不精准，易引起换行，所以用 flex-basis 作为外层进行均分。
+
+## 图文列表
+
+```html
+<ul class='news'>
+    <li>
+        <div class='image' style='background-image:url(http://www.imaoda.com/s/img/lessons/1.png)'></div>
+        <div class='content'>
+            <p class='title'>腾讯联手京东投资唯品会的消息又刷屏了各大财经媒体</p>
+            <p class='desc'> <span>经济</span> <span>1000跟帖</span></p>
+        </div>
+    </li>
+    <li>
+        <div class='image' style='background-image:url(http://www.imaoda.com/s/img/lessons/2.jpg)'></div>
+        <div class='content'>
+            <p class='title'>海外中国台湾促统联盟成立 呼吁两岸和平统一</p>
+            <p class='desc'> <span>社会</span> <span>1000跟帖</span></p>
+        </div>
+    </li>	
+</ul>
+<style>
+.news li{
+	display: flex;
+}
+.news .image{
+	flex: 0 0 30%;
+	height: 4.5rem;
+	background-position: 50%;
+	background-size: cover;
+}
+.news .content{
+	flex: 1 1 auto;
+	display: flex;
+	flex-flow: column nowrap;
+	justify-content:space-between;
+}
+.news .title{
+	line-height: 1.5rem;
+	height: 3rem;
+	overflow: hidden;
+}
+.news .desc{
+	justify-content: space-between;
+}
+</style>
+```
+
+基本布局完成，如图：
+
+![](http://www.imaoda.com/s/img/github/7.jpg)
+
+然后我们做一些布局上的微调，美化一下细节的css样式，效果如下：
+
+![](http://www.imaoda.com/s/img/github/6.jpg)
+
+完整 css 如下：
+
+```html
+<style>
+.news li{
+	display: flex;
+	padding: 1rem .5rem;
+	border-bottom: 1px solid #DDDDDD;
+}
+.news li:last-child{
+	border-bottom: none;
+}
+.news .image{
+	flex: 0 0 30%;
+	height: 4.5rem;
+	background-position: 50%;
+	background-size: cover;
+}
+.news .content{
+	flex: 1 1 auto;
+	display: flex;
+	flex-flow: column nowrap;
+	justify-content:space-between;
+	padding-left:.5rem;
+}
+.news .title{
+	font-size: 1.2rem;
+	line-height: 1.5rem;
+	height: 3rem;
+	overflow: hidden;
+}
+.news .desc{
+	font-size:0.8rem;
+	color:#2e2e2e;
+	display: flex;
+	justify-content: space-between;
+}
+</style>
+```
+
+在这种布局，具有几点好处：
+
+- 图片宽度固定占比（而不是固定像素），这样避免了 iPhone5 这样的小机型图片占比过大，也避免了 iPhoneX 图片占比过小
+- 图片以背景的形式插入，利用了 background-position: 50% 将图片中心移动到视野中心，利用 background-size: cover 确保图片能够占满，并尽量多的显示出来。这种布局完全解决了两类痛点：
+    - 痛点1：原始图片长宽比各异，统一长宽比后图像“被压扁”
+    - 痛点2：适配不同分辨率手机时，倘若图片尺寸一致
+- 通过 line-height 可限制标题不超过两行（常规的 white-space:nowrap + text-overflow: ellipse 仅对限制一行有用，而line-camp 是 webkit 私有属性），当然如果结合 js 控制效果更佳
+
+看看在不同分辨率下的效果（仔细看可以发现，图像在不同分辨率下的长宽比都不同，但都不失真）：
+
+![](http://www.imaoda.com/s/img/github/9.jpg)
+
+## 横向图文流
+
+结构整齐的图文流，便于快速向用户传递信息，效果如下
+
+![](http://www.imaoda.com/s/img/github/13.jpg)
+
+我们在布局的时候，通常会想到 flex 布局，通过 justify-content: space-around/space-between 实现等间距放置。但这种方案有时候尴尬：
+
+![](http://www.imaoda.com/s/img/github/14.jpg)
+
+解决这个问题，我们在布局的时候，依旧采用双层布局，外层采用 flex 布局，利用 flex-basis 实现均等划分，内层设定子元素，width 默认 auto，对子元素设置的 margin/padding/border，并不影响到全局的布局。
+
+代码如下：
+
+```html
+<div id="app">
+	<ul class='list'>
+		<li><div> content </div></li>
+		<li><div> content </div></li>
+		<li><div> content </div></li>
+		<li><div> content </div></li>
+		<li><div> content </div></li>
+		<li><div> content </div></li>
+		<li><div> content </div></li>
+		<li><div> content </div></li>
+		<li><div> content </div></li>
+		<li><div> content </div></li>
+	</ul>
+</div>
+<style>
+#app{
+	width: 1000px;
+	margin:0 auto;
+}
+.list{
+	display: flex;
+	flex-flow: row wrap
+}  
+.list>li{
+	flex: 0 0 20%;
+	list-style: none;
+}
+.list>li>div{
+	margin: 0.3rem; padding: 0.2rem; border: 1px solid #cccccc; color: white;
+	height: 5rem;
+	background-image:url(http://www.imaoda.com/s/img/system/back2.jpg);
+	background-position: 50%;
+	background-size: cover;
+}
+@media(max-width:768px){
+	#app{width:100%}
+	.list>li {flex: 0 0 50%}
+}
+</style>
+```
+
+效果图如下：
+
+![](http://www.imaoda.com/s/img/github/13.gif)
+
+## 竖向图文流
+
+Pinterest 网站采用的纵向的图片流，我们看看它布局的底部：
+
+![](http://www.imaoda.com/s/img/github/15.jpg)
+
+通过 Pinterest 不断刷新并追加到流中，我们发现，用 flex 布局可以完美实现，其示意图如下：
+
+![](http://www.imaoda.com/s/img/github/16.jpg)
+
+在flex-flow: column 中的 block 元素，其 width + padding + border + margin 也会默认将水平方向填充满，所以很省心，不用做额外处理。
+
+我们采用 Vue 来操作，附上完整代码：
+
+```html
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"><meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no, width=device-width">
+		<script src="https://cdn.bootcss.com/vue/2.5.9/vue.min.js"></script>
+	</head>
+	<body><div id="app" > 
+		<ul class='river'>
+			<li class='stream' v-for='col in cols'>
+				<div class='water' v-for='(v,k) in col'> <img :src="urlPrefix + v + suffix" alt=""> </div>
+			</li>								
+		</ul>
+	</div></body>
+</html>
+<script>
+new Vue({
+	el:"#app",
+	data: {
+		urlPrefix: 'http://www.imaoda.com/s/img/github/',
+		suffix: '.png',
+		images: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+		cols: {"0":[], "1": [], "2":[], "3":[]}
+	},
+	mounted(){
+		this.elRiver = document.querySelector('.river')
+		this.pushItem(this.images)
+	},
+	methods:{
+		calcHeight(){
+			let streams = this.elRiver.children
+			let minCol = 0
+			let minHeight = streams[0].clientHeight
+			for (let i=1; i<streams.length ; i++){
+				if (streams[i].clientHeight < minHeight){
+					minHeight = streams[i].clientHeight
+					minCol = i
+				}
+			}
+			return minCol
+		},
+		pushItem(arr){
+			if (!arr.length) return
+			this.$nextTick(() => {
+				let minCol = this.calcHeight()
+				this.cols[minCol].push(arr.shift())
+				this.$nextTick(() => {
+					this.pushItem(arr)
+				})							
+			})
+		}
+	}
+});
+</script>
+<style>
+*{margin:0;padding:0}
+.river{
+	display: flex;
+	align-items: flex-start;
+}
+.stream{
+	flex: 0 0 25%;
+	display: flex;
+	flex-flow: column nowrap;
+}
+.water img{
+	width: 100%
+}
+</style>
+```
+
+实现的效果如图所示（加上了延迟，方便理解）
+
+![](http://www.imaoda.com/s/img/github/15.gif)
+
+纵向的图文流的实现方案是：
+
+- 多个纵向的 flex 流
+- 新增元素优先插入较短的流中
+
+在技术实现上主要涉及：
+
+- 横向利用 flex-basis 平均划分多条纵向流（不添加 margin/ padding/ border）
+- 每一条纵向流 利用 flex-flow: column 布局，流中的块状子元素会默认 width 撑开占满
+- 有新增元素时，计算各个纵向流的高度（clientHeight），添加到最短流中
+- 添加多个元素时，需要不断的添加和计算（添加-计算新高度-添加-计算新高度...），因此需要在多个 Event Loop 中完成，因此可用 setTimeout 或者 $nextTick（Vue.js）的形式实现
+
