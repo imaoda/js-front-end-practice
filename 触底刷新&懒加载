@@ -1,0 +1,93 @@
+## 触底刷新
+
+当页面滚动到底部时，触发 ajax 请求，将取回的新内容追加到尾部，这是我们熟悉的加载流程。流程的关键在于如何监听 `触底`。我们来看下面的代码：
+
+```js
+let html = document.documentElement
+document.body.onscroll = function(){
+    html.scrollHeight == html.clientHeight + html.scrollTop  && alert('触底了')
+}
+```
+效果如下：
+
+![](http://www.imaoda.com/s/img/github/16.gif)
+
+我们来剖析一下这几个属性：在声明了 `<!DOCTYPE html>` 的页面中，这些属性具有以下含义：
+
+- **scrollTop**：被卷进上部滚轮里的页面高度， 对于html页面，用 documentElement.scrollTop 获取
+- **clientHeight** ：元素的高度，其中 documentElement.documentElement 高度固定为页面视口高度，而 body.clientHeight 默认情况下为页面舒展开的高度。 *如果 body 被限高则为限制后高度（比如 height: 500px 或者 html,body {height: 100%}）。当然不推荐限高，因为限高唯一的作用就是子元素尺度的百分比参考*
+- **scrollHeight**：元素舒展开的页面高度，即如果页面设置了 overflow: scroll/auto，则要把压在滚轴里的高度都算上，就像展开一幅画卷
+- scroll 事件需要在 body 上监听
+
+> 小结一下：除了在 body 元素上监听 scroll 事件，度量因素都与 body 元素无关
+
+因此，html 触底的条件是：
+
+```js
+document.documentElement.scrollHeight ===
+document.documentElement.clientHeight + document.documentElement.scrollTop
+```
+
+## 局部元素中的触底刷新
+
+上面的方法只对全局页面有效，如果只是某个 div 元素滚动到底部，则需替换成具体元素，如下代码：
+
+```js
+let el = document.querySelector('#app')
+el.onscroll = function(){
+	el.clientHeight + el.scrollTop === el.scrollHeight && alert("元素触底了")
+}
+```
+效果图如下：
+
+![](http://www.imaoda.com/s/img/github/17.gif)
+
+## 图片懒加载
+
+懒加载，是为了避免同时请求数量众多的图片资源，思路是：页面滚动到哪儿，图片加载到哪儿
+
+我们用一个非常精简灵活的方案来实现懒加载：
+
+1. 在 scroll 事件中，遍历所有的 class='unload' 的元素，计算其是否“露出页面”，如果是，则提取 data 中的图片链接，插入 img 元素
+2. 计算元素是否“露出页面”，采用元素的offsetTop 属性与当前页面展开情况来决定
+
+```html
+<!-- ... -->
+<figure class='unload' data-url='http://www.imaoda.com/s/img/github/1.png'></figure>
+<figure class='unload' data-url='http://www.imaoda.com/s/img/github/2.png'></figure>
+<figure class='unload' data-url='http://www.imaoda.com/s/img/github/3.png'></figure>
+<!-- ... -->
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+let figures = document.querySelectorAll('.unload')
+    function lazyLoad(){
+    	[].forEach.call(figures, figure => {
+    		if (!figure.dataset.url) return // 已经加载的，确保后续不再加载
+    		if (document.documentElement.clientHeight + document.documentElement.scrollTop > figure.offsetTop){
+    			let img = document.createElement('img')
+    			img.src = figure.dataset.url 
+    			figure.dataset.url = '' // 清空其 data-url 中内容，确保后续不再加载
+    			figure.appendChild(img)
+    			figure.className = ''
+    		} 
+    	})    
+    }
+    lazyLoad() // 确保页面刚刷新时，视野内的图片得以加载
+    document.body.onscroll = lazyLoad 
+})
+</script>
+<style>
+.unload{height:200px;background:#f2f2f2}
+</style>
+```
+
+![](http://www.imaoda.com/s/img/github/18.gif)
+
+以上仅用了最精简的代码实现了懒加载，实际使用可能还需考虑：
+
+- 触底刷新与懒加载配合使用
+- 如果在某个元素中使用懒加载（例如在某个局部的滚动框里），需将判断条件中的 document.documentElement 替换成具体元素，这也是为什么很多懒加载库无法生效的原因
+- 判断图片距离顶部距离的 offset 需确保其直系祖先元素无 position: relative/absolute/fixed 布局，如果有，则需要用 el.offsetParent 递归的获取，以确保计算准确
+- 未加载照片可用灰色的矩形占位，其大小可统一预设。（当然，加载了实际图片后，页面高度会发生变化）
+- 占位矩形可手动点击触发图片加载（避免在网络不稳定的情况下，未自动加载）
+- 占位矩形可以通过 :before 或 :after 伪类来统一设定一个logo，增加友好型
